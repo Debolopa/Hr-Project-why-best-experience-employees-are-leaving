@@ -1,0 +1,335 @@
+## Why are our best and most experienced employees leaving prematurely? Use this database and try to predict which valuable employees will leave next. 
+## Fields in the dataset include:
+        ## Employee satisfaction level
+        ## Last evaluation    
+        ## Number of projects
+        ## Average monthly hours
+        ## Time spent at the company
+        ## Whether they have had a work accident
+        ## Whether they have had a promotion in the last 5 years
+        ## Department
+        ## Salary
+        ## Whether the employee has left
+
+
+## We have given you two datasets , hr_train.csv and hr_test.csv . You need to use data hr_train to build predictive model for response variable ‘left’. 
+## hr_test data contains all other factors except “left”, you need to predict that using the model that you developed and submit your predicted values in a csv files.
+
+##If you are using decision trees or random forest here, probability scores can be calculated as:
+
+## score=predict(rf_model,newdata= testdata, type="prob")[,1]
+## score=predict(tree_model,newdata= testdata, type=‘vector’)[,1]
+
+Evaluation Criterion : auc score on test data. larger auc score, better Model
+
+1. Your auc score for test data should come out to be more than 0.84
+
+
+
+library(ggplot2)
+library(visdat)
+library(tidyr)
+library(dplyr)
+library(vcd)
+library(corrplot)
+
+
+
+setwd("/Users/depolopa/Desktop/untitled folder/project/hr")
+
+hr_train=read.csv("hr_train.csv",stringsAsFactors = FALSE)
+hr_test=read.csv("hr_test.csv",stringsAsFactors = FALSE)
+
+
+glimpse(hr_train)
+
+### Rows: 10,499
+### Columns: 10
+### $ satisfaction_level    <dbl> 0.42, 0.66, 0.55, 0.22, 0.20, 0.83, 0.87, 0.85, 0.89, 0.45,…
+### $ last_evaluation       <dbl> 0.46, 0.77, 0.49, 0.88, 0.72, 0.84, 0.49, 0.99, 0.92, 0.56,…
+### $ number_project        <int> 2, 2, 5, 4, 6, 4, 2, 3, 5, 2, 4, 3, 5, 5, 3, 7, 4, 4, 4, 2,…
+### $ average_montly_hours  <int> 150, 171, 240, 213, 224, 206, 251, 208, 237, 154, 250, 181,…
+### $ time_spend_company    <int> 3, 2, 3, 3, 4, 2, 3, 2, 5, 3, 5, 3, 3, 3, 3, 4, 2, 3, 4, 6,…
+### $ Work_accident         <int> 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,…
+### $ left                  <int> 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1,…
+### $ promotion_last_5years <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,…
+### $ sales                 <chr> "sales", "technical", "technical", "technical", "technical"…
+### $ salary                <chr> "medium", "medium", "high", "medium", "medium", "medium", "…
+### >
+
+
+
+
+glimpse(hr_test)
+
+
+### Rows: 4,500
+### Columns: 9
+### $ satisfaction_level    <dbl> 0.38, 0.80, 0.10, 0.45, 0.11, 0.41, 0.38, 0.45, 0.40, 0.40,…
+### $ last_evaluation       <dbl> 0.53, 0.86, 0.77, 0.54, 0.81, 0.55, 0.54, 0.47, 0.53, 0.49,…
+### $ number_project        <int> 2, 5, 6, 2, 6, 2, 2, 2, 2, 2, 2, 2, 2, 5, 6, 6, 2, 2, 4, 5,…
+### $ average_montly_hours  <int> 157, 262, 247, 135, 305, 148, 143, 160, 158, 135, 128, 140,…
+### $ time_spend_company    <int> 3, 6, 4, 3, 4, 3, 3, 3, 3, 3, 3, 3, 3, 5, 4, 2, 3, 3, 5, 4,…
+### $ Work_accident         <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+### $ promotion_last_5years <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+### $ sales                 <chr> "sales", "sales", "sales", "sales", "sales", "sales", "sale…
+### $ salary                <chr> "low", "medium", "low", "low", "low", "low", "low", "low", …
+### >
+
+
+
+##Change column name
+
+colnames(hr_train)[9] = "department"
+
+head(hr_train)
+
+## 
+##   satisfaction_level last_evaluation number_project average_montly_hours
+## 1               0.42            0.46              2                  150
+## 2               0.66            0.77              2                  171
+## 3               0.55            0.49              5                  240
+## 4               0.22            0.88              4                  213
+## 5               0.20            0.72              6                  224
+## 6               0.83            0.84              4                  206
+##   time_spend_company Work_accident left promotion_last_5years department salary
+## 1                  3             0    1                     0      sales medium
+## 2                  2             0    0                     0  technical medium
+## 3                  3             0    0                     0  technical   high
+## 4                  3             1    0                     0  technical medium
+## 5                  4             0    1                     0  technical medium
+## 6                  2             0    0                     0      sales medium
+## 
+
+
+str(hr_train)
+
+## 'data.frame':	10499 obs. of  10 variables:
+##  $ satisfaction_level   : num  0.42 0.66 0.55 0.22 0.2 0.83 0.87 0.85 0.89 0.45 ...
+##  $ last_evaluation      : num  0.46 0.77 0.49 0.88 0.72 0.84 0.49 0.99 0.92 0.56 ...
+##  $ number_project       : int  2 2 5 4 6 4 2 3 5 2 ...
+##  $ average_montly_hours : int  150 171 240 213 224 206 251 208 237 154 ...
+##  $ time_spend_company   : int  3 2 3 3 4 2 3 2 5 3 ...
+##  $ Work_accident        : int  0 0 0 1 0 0 0 0 0 0 ...
+##  $ left                 : int  1 0 0 0 1 0 0 0 0 1 ...
+##  $ promotion_last_5years: int  0 0 0 0 0 0 0 0 0 0 ...
+##  $ department           : chr  "sales" "technical" "technical" "technical" ...
+##  $ salary               : chr  "medium" "medium" "high" "medium" ...
+## >
+
+
+### From above results we can see that this a good dataset with 10499 records with 10 variables (columns)
+### 1. Work accident and Left are having 2 values, '1' for 'Yes' and '0' for 'Not'
+### 2. There are total 10 departments
+### 3. Three levels of salary are there 'low', 'medium', 'high'  Let's check Dependent variable
+
+### Let's check Dependent variable
+
+
+prop_table=round(prop.table(table(hr_train$left))*100)
+prop_table
+
+## 0  1 
+## 71 29 
+
+
+sapply(hr_train,function(x){round(prop.table(table(x))*100)})
+
+
+###We see that the classes have a proportion of (0 : 1)  71:29. 
+###In other words our data is not imbalanced. With a decent ML algorithm, our model would get good accuracy
+
+#Inferential Statistics
+#Let's use some graphical visualization and infer.
+### does low Average satisfaction level making employees leave the company?
+
+
+
+Employee_left=subset(hr_train,hr_train$left==1)
+mean_emp_left=print(mean(Employee_left$satisfaction_level))
+median_emp_left=print(median(Employee_left$satisfaction_level))
+
+
+
+##from above mean value of satisfaction level of employees who left company, It is clear that employees who left company have very low satisfaction level.
+
+
+##Let's analyze this visually
+
+
+
+density={tr <- function(a){
+  ggplot(data = Employee_left, aes(x= a, y=..density..)) + geom_histogram(fill="blue",color="red",alpha = 0.5,bins =100) +
+    geom_density()
+}
+tr(Employee_left$satisfaction_level)
+
+}
+
+###  So It is clearly visible that majority people who left company were having satisfaction level less then 0.5. 
+
+##so low Satisfaction level might be a reason to leave company. 
+
+##let's analyze some more factors.
+
+
+###How last evaluation is related? 
+
+
+mean_last_evaluation=print(mean(Employee_left$last_evaluation))
+median_last_evaluation=print(median(Employee_left$last_evaluation))
+
+
+### By seeing the relation between last evaluation and left , 
+##It is hard to say whether last evaluation is directly having an impact or not 
+### because population distribution is not proper. We can do sampling here to normalize 
+##the distribution or It might possible that last evaluation is having impact on satisfaction level , 
+###if so then we can say that last evaluation is indirectly impacting left or not left.
+
+
+### Is salary is having any direct impact?
+
+
+
+salary_impact=ggplot(subset(hr_train,left==1), aes(x = factor('Salary'), fill = factor(salary))) +
+  geom_bar(width = 1, position = "fill", color = "black") + coord_polar(theta = "y")+theme_bw()+
+  labs(title="Salary")
+
+
+###  above pie chart indicates , maximum employees who have left company having low salary 
+### but it might possible reason behind low salary that most of the people are having less experience 
+### so we have look at the relation between salary and total no of years of experience also before stating any conclusion about salary .
+
+
+
+### Is there a certain time period after which employees change the company?
+
+
+
+ggplot(subset(hr_train,left==1), aes(time_spend_company))+
+  geom_histogram(binwidth=0.5,fill='lightgreen')+
+  labs(x="Time spent company", title="Time Spend in company")+
+  theme_bw()
+
+###  Most of the employees who have left company have spent three years in company 
+###  so it might possible that they have considered three years as enough time span.
+
+
+##  Is there any issues in particular Department?
+
+
+ggplot(subset(hr_train,left==1), aes(department))+
+  geom_bar(fill='lightgreen',width=0.5)+
+  labs(x="Department", title="Department")+
+  theme_bw()
+
+
+
+###  Most of the people who have left company are from sales department 
+##   so it might possible that sales department employee are having some issue. 
+
+
+round(prop.table(table(hr_train$department))*100)
+
+
+###sapply(hr_train,function(x){round(prop.table(table(x))*100)})
+###   From above results it is clear that sales department has more people 
+###   so the left employee count is more and we can not compare departments as it is, 
+###   We can compare them by taking a ratio of the number of people who left and the number of people in each department.
+
+
+left_dept=subset(hr_train,hr_train$left==1)
+(table(left_dept$department))/(table(hr_train$department))
+
+
+###   Now it is clear that our initial analysis was wrong, The rate of attrition in accounting department is high.
+###   This was all about inferential. Now we will do predictive analysis.
+
+
+
+####   Predictive Modeling
+
+
+
+hr_test=read.csv("hr_test.csv",stringsAsFactors = FALSE)
+colnames(hr_test)[8] = "department"
+hr_test$department=as.numeric(hr_test$department)
+hr_test$salary=as.numeric(hr_test$salary)
+
+##corrplot( cor(as.matrix(Data), method = "pearson", use = "complete.obs") ,is.corr =FALSE, type = "lower",  
+          ##tl.col = "black", tl.srt =100)
+
+
+###   Data split
+
+library(caTools)
+
+split=sample.split(hr_train$left,SplitRatio = 0.8)
+train=subset(hr_train,split==TRUE)
+test=subset(hr_train,split==FALSE)
+table(train$left)
+table(test$left)
+
+
+write.csv(table(train$left),"mysubmission.csv",row.names = F)
+
+
+
+###Now we have to choose between models. Here we are predicting whether employee left or not i.e. 
+##we have to choose classification model as there are two classes of employee,
+###one who left and second who didn't. we are applying logistic model here.
+###logistic model gives us the probability of an event to happen and we convert 
+###those probabilities into 1s and 0s depending on pre decided cut of value of probability .
+
+
+set.seed(100)
+modal.glm=glm(as.factor(train$left)~.,hr_test=train, family = 'binomial',maxit=100)
+summary(modal.glm)
+
+
+
+
+#### 3.	Find out the variance in statisfaction_level for category 0 of variable 'left'
+
+### (round off to 4 decimal places).
+
+library(magrittr)
+library(dplyr)
+hr_train %>% select(satisfaction_level, left) %>% filter(left == 0) %>% group_by(left) %>% summarise(var(satisfaction_level))
+
+
+
+# 7.	According to given data what is the probability that someone will
+# leave the organisation if they were involved in a work accident?
+# (round off 2 decimal places)
+
+
+hr_train %>%
+ select(Work_accident, left) %>%
+filter(Work_accident == 1) %>%
+  arrange(left) %>%
+  group_by(left) %>%
+ summarise(n = n())
+
+
+
+##round(prop.table(table(hr_train$Work_accident==1))*100)
+
+
+##prop.table(table(hr_train$Work_accident==1))
+
+
+
+
+hr_train %>%
+  select(department, average_montly_hours) %>%
+  arrange(department) %>%
+  group_by(department) %>%
+  summarise(median_hrs = median(average_montly_hours),
+            n = n()) %>%
+  arrange(-median_hrs)
+
+
+
+sum(hr_train$promotion_last_5years)
+
